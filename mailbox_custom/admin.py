@@ -3,7 +3,7 @@ Admin configuration for custom mailbox models.
 """
 from django.contrib import admin
 from django_mailbox.admin import MailboxAdmin
-from .models import NoDeleteMailbox, MarkAsReadMailbox, UnreadOnlyMailbox
+from .models import NoDeleteMailbox, MarkAsReadMailbox, UnreadOnlyMailbox, UnreadOnlyNoMarkMailbox
 
 
 @admin.register(NoDeleteMailbox)
@@ -21,4 +21,10 @@ class MarkAsReadMailboxAdmin(MailboxAdmin):
 @admin.register(UnreadOnlyMailbox)
 class UnreadOnlyMailboxAdmin(MailboxAdmin):
     """Admin interface for UnreadOnlyMailbox."""
+    pass
+
+
+@admin.register(UnreadOnlyNoMarkMailbox)
+class UnreadOnlyNoMarkMailboxAdmin(MailboxAdmin):
+    """Admin interface for UnreadOnlyNoMarkMailbox."""
     pass

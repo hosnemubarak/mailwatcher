@@ -6,7 +6,7 @@ without removing them from the IMAP server.
 """
 import logging
 from django.core.management.base import BaseCommand, CommandError
-from mailbox_custom.models import NoDeleteMailbox, MarkAsReadMailbox, UnreadOnlyMailbox
+from mailbox_custom.models import NoDeleteMailbox, MarkAsReadMailbox, UnreadOnlyMailbox, UnreadOnlyNoMarkMailbox
 from notification.notification import Notification
 
 logger = logging.getLogger(__name__)
@@ -28,7 +28,7 @@ class Command(BaseCommand):
         )
         parser.add_argument(
             '--transport-type',
-            choices=['nodelete', 'markread', 'unreadonly'],
+            choices=['nodelete', 'markread', 'unreadonly', 'unreadonlynomark'],
             default='nodelete',
             help='Type of transport to use (default: nodelete)'
         )
@@ -98,6 +98,10 @@ class Command(BaseCommand):
             MailboxModel = UnreadOnlyMailbox
             message = "Using UnreadOnlyMailbox (only unread emails will be processed)"
             logger.info("Selected UnreadOnlyMailbox transport")
+        elif transport_type == 'unreadonlynomark':
+            MailboxModel = UnreadOnlyNoMarkMailbox
+            message = "Using UnreadOnlyNoMarkMailbox (only unread emails will be processed and not marked as read)"
+            logger.info("Selected UnreadOnlyNoMarkMailbox transport")
         
         self.stdout.write(message)
         
