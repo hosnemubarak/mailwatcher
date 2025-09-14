@@ -3,6 +3,7 @@ import signal
 import sys
 from django.core.management.base import BaseCommand
 from django.core.management import call_command
+from django.conf import settings
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 import atexit
@@ -20,8 +21,8 @@ class Command(BaseCommand):
         parser.add_argument(
             '--interval',
             type=int,
-            default=60,
-            help='Interval in seconds between email fetches (default: 60)'
+            default=getattr(settings, 'EMAIL_FETCH_INTERVAL', 60),
+            help=f'Interval in seconds between email fetches (default: {getattr(settings, "EMAIL_FETCH_INTERVAL", 60)})'
         )
         parser.add_argument(
             '--no-verbose',

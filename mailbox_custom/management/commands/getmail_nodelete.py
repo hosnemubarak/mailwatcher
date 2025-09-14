@@ -7,12 +7,17 @@ without removing them from the IMAP server.
 import logging
 from django.core.management.base import BaseCommand, CommandError
 from mailbox_custom.models import NoDeleteMailbox, MarkAsReadMailbox, UnreadOnlyMailbox
+from notification.notification import Notification
 
 logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
     help = 'Fetch mail without deleting from server using custom transport classes'
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.notification_service = Notification()
     
     def add_arguments(self, parser):
         parser.add_argument(
@@ -33,6 +38,27 @@ class Command(BaseCommand):
             help='Enable verbose output'
         )
     
+    def send_email_notification(self, message_count, mailbox_name):
+        """Send notification when new emails are detected"""
+        if message_count > 0:
+            # Static notification body as requested
+            notification_body = {
+                "body": "body test",
+                "tag": "mailbox",
+                "extra": {
+                    "alertname": "Mailbox alert"
+                }
+            }
+            
+            try:
+                success, response = self.notification_service.send(notification_body)
+                if success:
+                    logger.info(f"Notification sent successfully for {message_count} new emails in {mailbox_name}")
+                else:
+                    logger.warning(f"Failed to send notification for {mailbox_name}: {response}")
+            except Exception as e:
+                logger.error(f"Error sending notification for {mailbox_name}: {str(e)}")
+
     def handle(self, *args, **options):
         mailbox_names = options.get('mailbox_names')
         transport_type = options.get('transport_type')
@@ -105,6 +131,8 @@ class Command(BaseCommand):
                         f'  Processed {message_count} messages from {mailbox.name}'
                     )
                 )
+                
+                self.send_email_notification(message_count, mailbox.name)
                 
                 if verbose and messages:
                     logger.debug(f"Listing {len(messages)} messages from {mailbox.name}")

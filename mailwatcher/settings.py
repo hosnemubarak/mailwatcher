@@ -11,6 +11,11 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,12 +25,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-ux2b5cz6%s-kwqxywn+ev6pb5ukvyz29!vtl&)f-pyop-ipdhp'
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-default-key-change-in-production')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'True').lower() in ('true', '1', 'yes', 'on')
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 
 # Application definition
@@ -61,6 +66,7 @@ TEMPLATES = [
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
+                'django.template.context_processors.debug',
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
@@ -75,12 +81,19 @@ WSGI_APPLICATION = 'mailwatcher.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+# Default SQLite database (can be overridden with DATABASE_URL)
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+
+# Override with DATABASE_URL if provided (for PostgreSQL/MySQL)
+DATABASE_URL = os.getenv('DATABASE_URL')
+if DATABASE_URL:
+    import dj_database_url
+    DATABASES['default'] = dj_database_url.parse(DATABASE_URL)
 
 
 # Password validation
@@ -107,7 +120,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = os.getenv('SCHEDULER_TIMEZONE', 'UTC')
 
 USE_I18N = True
 
@@ -118,17 +131,25 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATIC_ROOT = BASE_DIR / os.getenv('STATIC_ROOT_PATH', 'staticfiles')
 
 # Media files (User uploads)
 MEDIA_URL = 'media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_ROOT = BASE_DIR / os.getenv('MEDIA_ROOT_PATH', 'media')
 
 # WhiteNoise configuration for static file serving
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Django Mailbox settings
-DJANGO_MAILBOX_ATTACHMENT_UPLOAD_TO = 'media/mailbox_attachments/%Y/%m/%d'
+DJANGO_MAILBOX_ATTACHMENT_UPLOAD_TO = 'mailbox_attachments/%Y/%m/%d'
+
+# Notification System Settings
+NOTIF_URL = os.getenv('NOTIF_URL', '')
+NOTIF_USERNAME = os.getenv('NOTIF_USERNAME', '')
+NOTIF_PASSWORD = os.getenv('NOTIF_PASSWORD', '')
+
+# Scheduler Settings
+EMAIL_FETCH_INTERVAL = int(os.getenv('EMAIL_FETCH_INTERVAL', '60'))
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -136,7 +157,8 @@ DJANGO_MAILBOX_ATTACHMENT_UPLOAD_TO = 'media/mailbox_attachments/%Y/%m/%d'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Logging Configuration
-import os
+LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
+LOG_RETENTION_DAYS = int(os.getenv('LOG_RETENTION_DAYS', '180'))
 
 # Create logs directory if it doesn't exist
 LOGS_DIR = BASE_DIR / 'logs'
@@ -159,27 +181,27 @@ LOGGING = {
     },
     'handlers': {
         'console': {
-            'level': 'INFO',
+            'level': LOG_LEVEL,
             'class': 'logging.StreamHandler',
             'formatter': 'standard',
         },
         'app_file': {
-            'level': 'INFO',
+            'level': LOG_LEVEL,
             'class': 'logging.handlers.TimedRotatingFileHandler',
             'filename': str(LOGS_DIR / 'app.log'),
             'when': 'midnight',
             'interval': 1,
-            'backupCount': 180,  # Keep logs for 180 days (6 months)
+            'backupCount': LOG_RETENTION_DAYS,
             'formatter': 'standard',
             'encoding': 'utf-8',
         },
         'scheduler_file': {
-            'level': 'INFO',
+            'level': LOG_LEVEL,
             'class': 'logging.handlers.TimedRotatingFileHandler',
             'filename': str(LOGS_DIR / 'scheduler.log'),
             'when': 'midnight',
             'interval': 1,
-            'backupCount': 180,  # Keep logs for 180 days (6 months)
+            'backupCount': LOG_RETENTION_DAYS,
             'formatter': 'standard',
             'encoding': 'utf-8',
         },
@@ -189,7 +211,7 @@ LOGGING = {
             'filename': str(LOGS_DIR / 'errors.log'),
             'when': 'midnight',
             'interval': 1,
-            'backupCount': 180,  # Keep logs for 180 days (6 months)
+            'backupCount': LOG_RETENTION_DAYS,
             'formatter': 'detailed',
             'encoding': 'utf-8',
         },
@@ -197,12 +219,12 @@ LOGGING = {
     'loggers': {
         'mailbox_custom': {
             'handlers': ['console', 'app_file', 'error_file'],
-            'level': 'INFO',
+            'level': LOG_LEVEL,
             'propagate': False,
         },
         'apscheduler': {
             'handlers': ['console', 'scheduler_file', 'error_file'],
-            'level': 'INFO',
+            'level': LOG_LEVEL,
             'propagate': False,
         },
         'django.request': {
@@ -213,6 +235,15 @@ LOGGING = {
     },
     'root': {
         'handlers': ['console', 'app_file', 'error_file'],
-        'level': 'INFO',
+        'level': LOG_LEVEL,
     },
 }
+
+# Security Settings (for production)
+if not DEBUG:
+    SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', 'False').lower() in ('true', '1', 'yes', 'on')
+    SECURE_HSTS_SECONDS = int(os.getenv('SECURE_HSTS_SECONDS', '31536000'))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = os.getenv('SECURE_HSTS_INCLUDE_SUBDOMAINS', 'True').lower() in ('true', '1', 'yes', 'on')
+    SECURE_HSTS_PRELOAD = os.getenv('SECURE_HSTS_PRELOAD', 'True').lower() in ('true', '1', 'yes', 'on')
+    SESSION_COOKIE_SECURE = os.getenv('SESSION_COOKIE_SECURE', 'True').lower() in ('true', '1', 'yes', 'on')
+    CSRF_COOKIE_SECURE = os.getenv('CSRF_COOKIE_SECURE', 'True').lower() in ('true', '1', 'yes', 'on')

@@ -2,3 +2,5 @@ django==5.2.6
 django-mailbox==4.10.1
 APScheduler==3.11.0
 whitenoise==6.6.0
+requests
+python-dotenv==1.0.0
