@@ -38,26 +38,42 @@ class Command(BaseCommand):
             help='Enable verbose output'
         )
     
-    def send_email_notification(self, message_count, mailbox_name):
-        """Send notification when new emails are detected"""
-        if message_count > 0:
-            # Static notification body as requested
-            notification_body = {
-                "body": "body test",
-                "tag": "mailbox",
-                "extra": {
-                    "alertname": "Mailbox alert"
-                }
-            }
+    def send_email_notification(self, messages, mailbox_name):
+        """Send notification for each new email with dynamic content"""
+        if not messages:
+            return
             
+        # Send notification for each email individually
+        for message in messages:
             try:
-                success, response = self.notification_service.send(notification_body)
+                success, response = self.notification_service.send_email_alert(
+                    email_data=message,
+                    mailbox_name=mailbox_name,
+                    message_count=1
+                )
                 if success:
-                    logger.info(f"Notification sent successfully for {message_count} new emails in {mailbox_name}")
+                    sender = getattr(message, 'from_header', 'Unknown Sender')
+                    subject = getattr(message, 'subject', 'No Subject')
+                    logger.info(f"Notification sent for email from {sender}: {subject}")
                 else:
-                    logger.warning(f"Failed to send notification for {mailbox_name}: {response}")
+                    logger.warning(f"Failed to send notification for email in {mailbox_name}: {response}")
             except Exception as e:
-                logger.error(f"Error sending notification for {mailbox_name}: {str(e)}")
+                logger.error(f"Error sending notification for email in {mailbox_name}: {str(e)}")
+        
+        # Also send a summary notification if multiple emails
+        if len(messages) > 1:
+            try:
+                success, response = self.notification_service.send_email_alert(
+                    email_data=None,
+                    mailbox_name=mailbox_name,
+                    message_count=len(messages)
+                )
+                if success:
+                    logger.info(f"Summary notification sent for {len(messages)} emails in {mailbox_name}")
+                else:
+                    logger.warning(f"Failed to send summary notification for {mailbox_name}: {response}")
+            except Exception as e:
+                logger.error(f"Error sending summary notification for {mailbox_name}: {str(e)}")
 
     def handle(self, *args, **options):
         mailbox_names = options.get('mailbox_names')
@@ -132,7 +148,7 @@ class Command(BaseCommand):
                     )
                 )
                 
-                self.send_email_notification(message_count, mailbox.name)
+                self.send_email_notification(messages, mailbox.name)
                 
                 if verbose and messages:
                     logger.debug(f"Listing {len(messages)} messages from {mailbox.name}")

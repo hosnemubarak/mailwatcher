@@ -1,5 +1,7 @@
 from .base_endpoint import BaseEndpoint
 import os
+import json
+from datetime import datetime
 
 
 class Notification(BaseEndpoint):
@@ -44,42 +46,79 @@ class Notification(BaseEndpoint):
         except KeyError:
             # Terminate from the script
             return False, "There is an error for environment variables 'NOTIF_URL','NOTIF_USERNAME', 'NOTIF_PASSWORD'."
+
     
     def send_email_alert(self, email_data=None, mailbox_name=None, message_count=0):
         '''
-        Send email notification with support for dynamic content.
-        Currently uses static body but designed for future dynamic content.
+        Send email notification with dynamic content based on incoming email data.
         
         Args:
-            email_data: Future parameter for dynamic email content
+            email_data: Email message object or dict containing email information
             mailbox_name: Name of the mailbox that received emails
             message_count: Number of new emails detected
             
         Returns:
             Tuple of (success: bool, response/error_message)
         '''
-        # Static notification body as requested
-        # TODO: Replace with dynamic content when needed
-        notification_body = {
-            "body": "body test",
-            "tag": "mailbox",
-            "extra": {
-                "alertname": "Mailbox alert"
-            }
-        }
+        # Get notification tag from environment variable, fallback to 'mailbox'
+        notification_tag = os.getenv("NOTIFICATION_TAG", "mailbox")
         
-        # Future enhancement: Use dynamic content
-        # if email_data:
-        #     notification_body = {
-        #         "body": f"New email from {email_data.get('from', 'Unknown')}: {email_data.get('subject', 'No Subject')}",
-        #         "tag": "mailbox",
-        #         "extra": {
-        #             "alertname": f"New email in {mailbox_name}",
-        #             "mailbox": mailbox_name,
-        #             "count": message_count,
-        #             "subject": email_data.get('subject', ''),
-        #             "from": email_data.get('from', '')
-        #         }
-        #     }
+        # Generate dynamic notification body based on email data
+        if email_data and hasattr(email_data, 'from_header'):
+            # Extract email information from django-mailbox Message object
+            sender_email = getattr(email_data, 'from_header', 'Unknown Sender')
+            subject = getattr(email_data, 'subject', 'No Subject')
+            
+            # Create professional body message
+            body_message = f"You have received a new email in {mailbox_name} from {sender_email}."
+            
+            # Create extra metadata JSON
+            extra_data = {
+                "alertname": f"New email in {mailbox_name}",
+                "mailbox": mailbox_name,
+                "sender": sender_email,
+                "subject": subject,
+                "message_count": message_count
+            }
+            
+            # Add optional fields if available
+            if hasattr(email_data, 'processed'):
+                extra_data["processed_time"] = email_data.processed.isoformat() if email_data.processed else None
+            if hasattr(email_data, 'message_id'):
+                extra_data["message_id"] = getattr(email_data, 'message_id', None)
+            if hasattr(email_data, 'in_reply_to'):
+                extra_data["in_reply_to"] = getattr(email_data, 'in_reply_to', None)
+                
+        elif isinstance(email_data, dict):
+            # Handle email data as dictionary
+            sender_email = email_data.get('from', 'Unknown Sender')
+            subject = email_data.get('subject', 'No Subject')
+            
+            body_message = f"You have received a new email in {mailbox_name} from {sender_email}."
+            
+            extra_data = {
+                "alertname": f"New email in {mailbox_name}",
+                "mailbox": mailbox_name,
+                "sender": sender_email,
+                "subject": subject,
+                "message_count": message_count,
+                **email_data  # Include any additional email data
+            }
+        else:
+            # Fallback for when no email data is provided
+            body_message = f"You have received {message_count} new email(s) in {mailbox_name}."
+            
+            extra_data = {
+                "alertname": f"New emails in {mailbox_name}",
+                "mailbox": mailbox_name,
+                "message_count": message_count
+            }
+        
+        # Build the notification payload
+        notification_body = {
+            "body": body_message,
+            "tag": notification_tag,
+            "extra": extra_data
+        }
         
         return self.send(notification_body)
