@@ -443,8 +443,9 @@ class UnreadOnlyNoMarkImapTransport(ImapTransport):
                     continue
 
                 # Check for duplicate Message-ID
-                if Message.objects.filter(message_id=message.message_id).exists():
-                    logger.debug(f"Message UID {uid} is a duplicate, skipping")
+                message_id = message.get('Message-ID')
+                if message_id and Message.objects.filter(message_id=message_id).exists():
+                    logger.debug(f"Message UID {uid} is a duplicate (Message-ID: {message_id}), skipping")
                     continue
 
                 yield message

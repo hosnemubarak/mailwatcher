@@ -25,7 +25,7 @@ COPY . .
 RUN mkdir -p logs
 
 # Collect static files
-RUN python manage.py collectstatic --noinit --clear --verbosity 0
+RUN python manage.py collectstatic --noinput --clear --verbosity 0
 
 # Create a non-root user
 RUN adduser --disabled-password --gecos '' appuser

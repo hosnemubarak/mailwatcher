@@ -10,18 +10,18 @@ services:
       - ./logs:/app/logs
       - ./media:/app/media
       - ./db.sqlite3:/app/db.sqlite3
+      # Mount source code for live development
+      - .:/app
     env_file:
       - .env
     environment:
       - ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
+      - DEBUG=True
+      - PYTHONUNBUFFERED=1
     command: >
       sh -c "python manage.py migrate &&
              python manage.py collectstatic --noinput &&
-             python manage.py shell -c \"
-             from django.contrib.auth.models import User;
-             User.objects.filter(username='admin').exists() or 
-             User.objects.create_superuser('admin', 'admin@example.com', 'admin')
-             \" &&
+             python manage.py shell -c 'from django.contrib.auth.models import User; User.objects.filter(username=\"admin\").exists() or User.objects.create_superuser(\"admin\", \"admin@example.com\", \"admin\")' &&
              python manage.py runserver 0.0.0.0:8000"
     restart: unless-stopped
 
@@ -32,8 +32,12 @@ services:
       - ./logs:/app/logs
       - ./media:/app/media
       - ./db.sqlite3:/app/db.sqlite3
+      # Mount source code for live development
+      - .:/app
     env_file:
       - .env
+    environment:
+      - PYTHONUNBUFFERED=1
     command: >
       sh -c "python manage.py migrate &&
              python manage.py start_email_scheduler"
