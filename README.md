@@ -1,6 +1,6 @@
 # MailWatcher - Django Email Processing System
 
-A Django application that processes emails from IMAP servers without deleting them. Built on django-mailbox with custom transport classes and automated scheduling.
+A Django application that processes unread emails from IMAP servers without modifying them. Built on django-mailbox with a custom transport class and automated scheduling.
 
 ## Quick Start with Docker
 
@@ -71,7 +71,7 @@ imap+ssl://youremailaddress%40gmail.com:1234@imap.gmail.com?folder=MyFolder&arch
 **⚠️ URL Encoding Required:**
 Some characters must be encoded in the URI: @ → %40, # → %23, : → %3A, & → %26
 
-That's it! The system will automatically process emails every 60 seconds.
+That's it! The system will automatically process unread emails every 60 seconds without modifying them on the server.
 
 ## Manual Setup (Without Docker)
 
@@ -86,17 +86,21 @@ python manage.py start_email_scheduler
 
 ## Features
 
-- **No-Delete Email Processing**: Process emails while keeping them on the server
-- **Multiple Processing Modes**: Choose how emails are handled after processing
+- **Unread-Only Processing**: Process only unread emails from the server
+- **Non-Destructive**: Emails remain unread and unchanged on the server
+- **Duplicate Prevention**: Built-in Message-ID checking prevents duplicate processing
 - **Automated Scheduling**: Run email processing every minute with APScheduler
 - **Django Admin Integration**: Manage mailboxes through the admin interface
 - **Comprehensive Logging**: Separate logs for application and scheduler activities
+- **Notification System**: Dynamic email notifications with full metadata
 
-## Email Processing Modes
+## Email Processing Behavior
 
-- **No-Delete Mode** (Default): Process all emails without deleting them
-- **Mark-as-Read Mode**: Process emails and mark them as read
-- **Unread-Only Mode**: Process only unread emails
+The system uses **UnreadOnlyNoMarkMailbox** which:
+- Processes only unread emails from IMAP servers
+- Leaves emails in their original unread state
+- Prevents duplicate processing using Message-ID headers
+- Does not delete or modify emails on the server
 
 ## Commands
 
@@ -117,4 +121,4 @@ docker-compose logs -f app
 - Restart services: `docker-compose restart`
 - Reset database: `docker-compose down -v && docker-compose up -d`
 
-For detailed documentation and advanced usage, see the original comprehensive README in the repository history.
+For detailed command documentation, see `COMMANDS.md`.

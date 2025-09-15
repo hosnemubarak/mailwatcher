@@ -1,19 +1,13 @@
-"""
-Management command to fetch mail without deleting from server.
-
-This command uses the custom NoDeleteMailbox model to process emails
-without removing them from the IMAP server.
-"""
 import logging
 from django.core.management.base import BaseCommand, CommandError
-from mailbox_custom.models import NoDeleteMailbox, MarkAsReadMailbox, UnreadOnlyMailbox, UnreadOnlyNoMarkMailbox
+from mailbox_custom.models import UnreadOnlyNoMarkMailbox
 from notification.notification import Notification
 
 logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    help = 'Fetch mail without deleting from server using custom transport classes'
+    help = 'Fetch unread mail without deleting from server or marking as read'
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -25,12 +19,6 @@ class Command(BaseCommand):
             nargs='*', 
             type=str,
             help='Names of mailboxes to process (if not specified, all active mailboxes)'
-        )
-        parser.add_argument(
-            '--transport-type',
-            choices=['nodelete', 'markread', 'unreadonly', 'unreadonlynomark'],
-            default='nodelete',
-            help='Type of transport to use (default: nodelete)'
         )
         parser.add_argument(
             '--verbose',
@@ -77,31 +65,17 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         mailbox_names = options.get('mailbox_names')
-        transport_type = options.get('transport_type')
         verbose = options.get('verbose')
         
-        logger.info(f"Starting getmail_nodelete command with transport_type={transport_type}, verbose={verbose}")
+        logger.info(f"Starting getmail_nodelete command with verbose={verbose}")
         
         if verbose:
             logging.basicConfig(level=logging.INFO)
         
-        # Choose the appropriate mailbox model based on transport type
-        if transport_type == 'nodelete':
-            MailboxModel = NoDeleteMailbox
-            message = "Using NoDeleteMailbox (emails will not be deleted)"
-            logger.info("Selected NoDeleteMailbox transport")
-        elif transport_type == 'markread':
-            MailboxModel = MarkAsReadMailbox
-            message = "Using MarkAsReadMailbox (emails will be marked as read)"
-            logger.info("Selected MarkAsReadMailbox transport")
-        elif transport_type == 'unreadonly':
-            MailboxModel = UnreadOnlyMailbox
-            message = "Using UnreadOnlyMailbox (only unread emails will be processed)"
-            logger.info("Selected UnreadOnlyMailbox transport")
-        elif transport_type == 'unreadonlynomark':
-            MailboxModel = UnreadOnlyNoMarkMailbox
-            message = "Using UnreadOnlyNoMarkMailbox (only unread emails will be processed and not marked as read)"
-            logger.info("Selected UnreadOnlyNoMarkMailbox transport")
+        # Use UnreadOnlyNoMarkMailbox (only processes unread emails without marking them as read)
+        MailboxModel = UnreadOnlyNoMarkMailbox
+        message = "Using UnreadOnlyNoMarkMailbox (only unread emails will be processed and not marked as read)"
+        logger.info("Selected UnreadOnlyNoMarkMailbox transport")
         
         self.stdout.write(message)
         

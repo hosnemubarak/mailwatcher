@@ -39,9 +39,9 @@ class Command(BaseCommand):
             
             # Call the getmail_nodelete command
             if verbose:
-                call_command('getmail_nodelete', transport_type='unreadonlynomark', verbose=True)
+                call_command('getmail_nodelete', verbose=True)
             else:
-                call_command('getmail_nodelete', transport_type='unreadonlynomark')
+                call_command('getmail_nodelete')
                 
             self.stdout.write(
                 self.style.SUCCESS(f'Email fetch completed at {self.get_current_time()}')

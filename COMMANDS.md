@@ -21,7 +21,7 @@ python manage.py start_email_scheduler [options]
 ### What It Does
 - Runs an immediate email fetch when started
 - Schedules recurring fetches at specified intervals
-- Uses `unreadonlynomark` transport by default (processes unread emails and keeps them unread)
+- Uses `UnreadOnlyNoMarkMailbox` (processes unread emails and keeps them unread)
 - Handles shutdown signals gracefully (Ctrl+C)
 - Logs all activities to `logs/scheduler.log`
 
@@ -56,7 +56,7 @@ python manage.py start_email_scheduler --interval 120 --no-verbose
 
 ## getmail_nodelete Command
 
-**Purpose**: Manually fetch emails using different transport types without deleting from server.
+**Purpose**: Manually fetch unread emails without modifying them on the server.
 
 ### Basic Syntax
 ```bash
@@ -68,49 +68,21 @@ python manage.py getmail_nodelete [mailbox_names] [options]
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `mailbox_names` | List | All active | Specific mailbox names to process |
-| `--transport-type` | Choice | nodelete | Transport type to use |
 | `--verbose` | Flag | False | Enable detailed output |
 
-### Transport Types
+### Email Processing Behavior
 
-| Type | Behavior | Use Case |
-|------|----------|----------|
-| `nodelete` | Process all emails, keep unchanged | Testing, development, data migration |
-| `markread` | Process all emails, mark as read | Production tracking |
-| `unreadonly` | Process unread emails, mark as read | Regular automation, performance |
-| `unreadonlynomark` | Process unread emails, keep unread | Special cases, preserve status |
-
-### Transport Type Details
-
-#### 1. nodelete (Default)
-- **Processes**: All emails in mailbox
-- **Server action**: No changes (emails remain as-is)
-- **Database**: Saves all processed emails
-- **Best for**: Testing, development, one-time imports
-
-#### 2. markread
-- **Processes**: All emails in mailbox
-- **Server action**: Marks emails as read
-- **Database**: Saves all processed emails
-- **Best for**: Production environments, tracking processed emails
-
-#### 3. unreadonly
-- **Processes**: Only unread emails
-- **Server action**: Marks processed emails as read
-- **Database**: Saves only new emails
-- **Best for**: Regular automation, avoiding reprocessing
-
-#### 4. unreadonlynomark
-- **Processes**: Only unread emails
-- **Server action**: Keeps emails unread
-- **Database**: Saves only new emails (prevents duplicates)
-- **Best for**: Special monitoring, preserving email status
+The command uses **UnreadOnlyNoMarkMailbox** which:
+- **Processes**: Only unread emails in mailbox
+- **Server action**: No changes (emails remain unread)
+- **Database**: Saves only new emails (prevents duplicates using Message-ID)
+- **Best for**: Non-destructive monitoring, preserving email status
 
 ### Examples
 
 #### Basic Usage
 
-**Process all mailboxes (no deletion)**:
+**Process all mailboxes**:
 ```bash
 python manage.py getmail_nodelete
 ```
@@ -127,64 +99,29 @@ python manage.py getmail_nodelete --verbose
 python manage.py getmail_nodelete inbox support
 ```
 
-**Process specific mailboxes with mark-as-read**:
+**Process specific mailboxes with verbose output**:
 ```bash
-python manage.py getmail_nodelete inbox support --transport-type markread
+python manage.py getmail_nodelete inbox support --verbose
 ```
 
-#### Transport Type Examples
-
-**Mark emails as read (production)**:
-```bash
-python manage.py getmail_nodelete --transport-type markread --verbose
-```
-
-**Process only unread emails**:
-```bash
-python manage.py getmail_nodelete --transport-type unreadonly --verbose
-```
-
-**Process unread emails without marking as read**:
-```bash
-python manage.py getmail_nodelete --transport-type unreadonlynomark --verbose
-```
-
-#### Combined Parameters
-
-**Specific mailboxes + transport + verbose**:
-```bash
-python manage.py getmail_nodelete inbox support --transport-type unreadonly --verbose
-```
-
-**All mailboxes + special transport + verbose**:
-```bash
-python manage.py getmail_nodelete --transport-type unreadonlynomark --verbose
-```
-
-### Use Cases by Transport Type
+### Use Cases
 
 #### Development & Testing
 ```bash
 # Safe testing - no changes to server
-python manage.py getmail_nodelete --transport-type nodelete --verbose
+python manage.py getmail_nodelete --verbose
 ```
 
-#### Production Deployment
+#### Production Monitoring
 ```bash
-# Track processed emails
-python manage.py getmail_nodelete --transport-type markread --verbose
+# Monitor unread emails without changing status
+python manage.py getmail_nodelete --verbose
 ```
 
-#### Regular Automation
+#### Specific Mailbox Processing
 ```bash
-# Efficient processing, avoid duplicates
-python manage.py getmail_nodelete --transport-type unreadonly --verbose
-```
-
-#### Special Monitoring
-```bash
-# Monitor without changing email status
-python manage.py getmail_nodelete --transport-type unreadonlynomark --verbose
+# Process only important mailboxes
+python manage.py getmail_nodelete inbox alerts --verbose
 ```
 
 ---
@@ -208,11 +145,8 @@ docker-compose exec scheduler python manage.py start_email_scheduler --interval 
 # Process emails manually
 docker-compose exec app python manage.py getmail_nodelete --verbose
 
-# Use specific transport
-docker-compose exec app python manage.py getmail_nodelete --transport-type unreadonlynomark --verbose
-
 # Process specific mailboxes
-docker-compose exec app python manage.py getmail_nodelete inbox --transport-type markread --verbose
+docker-compose exec app python manage.py getmail_nodelete inbox --verbose
 ```
 
 ---
@@ -225,31 +159,32 @@ docker-compose exec app python manage.py getmail_nodelete inbox --transport-type
 |----------|---------|
 | Start automated processing | `python manage.py start_email_scheduler` |
 | Test email fetching | `python manage.py getmail_nodelete --verbose` |
-| Production processing | `python manage.py getmail_nodelete --transport-type markread --verbose` |
-| Process only new emails | `python manage.py getmail_nodelete --transport-type unreadonly --verbose` |
-| Monitor without changes | `python manage.py getmail_nodelete --transport-type unreadonlynomark --verbose` |
+| Process specific mailboxes | `python manage.py getmail_nodelete inbox support --verbose` |
 | Custom scheduler interval | `python manage.py start_email_scheduler --interval 30` |
 
 ### Parameter Combinations
 
 | Parameters | Result |
 |------------|--------|
-| No parameters | Process all mailboxes, no deletion, basic output |
+| No parameters | Process all mailboxes, basic output |
 | `--verbose` | Same as above but with detailed output |
-| `--transport-type markread` | Process all emails, mark as read |
-| `--transport-type unreadonly --verbose` | Process unread emails, mark as read, detailed output |
+| `mailbox1 mailbox2` | Process specific mailboxes, basic output |
 | `mailbox1 mailbox2 --verbose` | Process specific mailboxes, detailed output |
-| `--transport-type unreadonlynomark --verbose` | Process unread emails, keep unread, detailed output |
 
 ---
 
 ## Best Practices
 
-1. **Start with testing**: Use `nodelete` transport for initial setup
+1. **Start with testing**: Use `--verbose` for initial setup to see what's happening
 2. **Use verbose output**: Always add `--verbose` in production for monitoring
-3. **Choose appropriate transport**: 
-   - `markread` for production tracking
-   - `unreadonly` for regular automation
-   - `unreadonlynomark` for special monitoring
+3. **Monitor specific mailboxes**: Process only the mailboxes you need to reduce load
 4. **Monitor logs**: Check `logs/` directory for detailed information
 5. **Test before automation**: Run manual commands before starting scheduler
+
+## Key Features
+
+- **Non-destructive**: Emails remain unchanged on the server
+- **Unread-only**: Only processes emails that haven't been read
+- **Duplicate prevention**: Built-in Message-ID checking prevents reprocessing
+- **Flexible scheduling**: Configurable intervals for automated processing
+- **Comprehensive logging**: Detailed logs for monitoring and debugging
