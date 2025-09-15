@@ -21,8 +21,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy project
 COPY . .
 
-# Create logs directory
-RUN mkdir -p logs
+# Create necessary directories
+RUN mkdir -p logs data
+
+# Make entrypoint script executable
+RUN chmod +x entrypoint.sh
 
 # Collect static files
 RUN python manage.py collectstatic --noinput --clear --verbosity 0

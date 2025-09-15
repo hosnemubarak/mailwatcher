@@ -9,7 +9,6 @@ services:
     volumes:
       - ./logs:/app/logs
       - ./media:/app/media
-      - ./db.sqlite3:/app/db.sqlite3
       # Mount source code for live development
       - .:/app
     env_file:
@@ -31,7 +30,6 @@ services:
     volumes:
       - ./logs:/app/logs
       - ./media:/app/media
-      - ./db.sqlite3:/app/db.sqlite3
       # Mount source code for live development
       - .:/app
     env_file:
