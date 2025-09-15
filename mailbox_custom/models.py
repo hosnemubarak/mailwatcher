@@ -34,6 +34,9 @@ class UnreadOnlyNoMarkMailbox(Mailbox):
                     folder=self.folder
                 )
                 
+                # Set mailbox reference for per-mailbox duplicate checking
+                conn.mailbox = self
+                
                 logger.debug(f"Connecting to IMAP server for {self.name} with user {self.username}")
                 conn.connect(self.username, self.password)
                 logger.info(f"Successfully connected UnreadOnlyNoMarkMailbox {self.name}")
